@@ -1,0 +1,6 @@
+/bin/
+/config.toml
+*.log
+*.info
+.DS_Store
+/dist/

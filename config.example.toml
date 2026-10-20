@@ -1,0 +1,5 @@
+# 未指定时自动发现本机登录态和客户端运行时。
+# auth_file = "/absolute/path/workbuddy-desktop.info"
+# runtime = "/Applications/WorkBuddy.app/Contents/MacOS/WorkBuddy"
+timeout = "30s"
+budget = "7m"
