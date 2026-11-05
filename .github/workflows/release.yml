@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Check release inputs
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test -f "docs/releases/$RELEASE_TAG.md"
+          test -z "$(gofmt -l cmd internal)"
+      - name: Run tests and vet
+        run: make check
+      - name: Build archives and checksums
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bash scripts/package.sh "$RELEASE_TAG"
+      - name: Smoke test packaged Linux binary
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          archive="dist/$RELEASE_TAG/workbuddy-cli_${RELEASE_TAG}_linux_amd64.tar.gz"
+          smoke_dir=$(mktemp -d)
+          tar -xzf "$archive" -C "$smoke_dir"
+          executable="$smoke_dir/workbuddy-cli_${RELEASE_TAG}_linux_amd64/workbuddy-cli"
+          "$executable" version --output json | jq -e --arg version "${RELEASE_TAG#v}" '.version == $version'
+          "$executable" --help >/dev/null
+      - name: Publish release with all assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" --verify-tag --draft \
+            --title "$RELEASE_TAG" --notes-file "docs/releases/$RELEASE_TAG.md" \
+            "dist/$RELEASE_TAG/"*.tar.gz "dist/$RELEASE_TAG/"*.zip \
+            "dist/$RELEASE_TAG/SHA256SUMS"
+          gh release edit "$RELEASE_TAG" --draft=false --latest

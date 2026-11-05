@@ -133,3 +133,15 @@ make build
 测试使用本地 HTTPS 模拟服务和合成凭据，不访问真实账号。真实接口和客户端加密能力需在目标机器单独联调；交叉编译只证明可构建，不证明原生运行兼容性。
 
 本次上游同步范围与未纳入内容见 [上游同步说明](docs/upstream-sync.md)。
+
+## GitHub Actions 发布
+
+推送 `vMAJOR.MINOR.PATCH` 标签会触发 `.github/workflows/release.yml`。工作流按 `go.mod` 安装 Go，先检查格式、执行 `make check`，再构建六个平台安装包及 `SHA256SUMS`。Linux amd64 安装包会执行版本冒烟检查。工作流先上传草稿 Release，附件完整后转为正式发布；不会访问真实 WorkBuddy 登录态。
+
+```sh
+# 标签应指向包含对应发布说明的提交。
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+发布说明位于 `docs/releases/<tag>.md`，版本号由标签注入二进制。也可在 Actions 页面选择该标签手动运行 Release 工作流。已存在的 Release 不会自动覆盖。本地仅构建安装包可执行 `bash scripts/package.sh v0.1.1`，产物位于 `dist/v0.1.1/`，需要 `go`、`tar`、`zip` 和 `shasum`。这一步不执行测试；发布前应先运行 `make check`。

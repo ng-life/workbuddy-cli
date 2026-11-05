@@ -17,6 +17,9 @@ import (
 	"workbuddy-cli/internal/workbuddy"
 )
 
+// Version may be set from a release tag using go build -ldflags -X.
+var Version = "0.1.1"
+
 type usageError struct{ error }
 
 // Run is safe to invoke repeatedly in tests; only main terminates the process.
@@ -172,12 +175,12 @@ func Run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	root.AddCommand(completion)
 	version := &cobra.Command{Use: "version", Short: "显示版本", Args: cobra.NoArgs, RunE: func(*cobra.Command, []string) error {
 		if output == "json" {
-			return emit(stdout, output, map[string]any{"name": "workbuddy-cli", "version": "0.1.1-dev"})
+			return emit(stdout, output, map[string]any{"name": "workbuddy-cli", "version": Version})
 		}
 		if output != "text" {
 			return usageError{errors.New("--output 仅支持 text 或 json")}
 		}
-		_, e := fmt.Fprintln(stdout, "workbuddy-cli 0.1.1-dev")
+		_, e := fmt.Fprintln(stdout, "workbuddy-cli "+Version)
 		return e
 	}}
 	root.AddCommand(version)
