@@ -142,7 +142,7 @@ func TestGrowthRoundAndPartialFailure(t *testing.T) {
 	if e == nil || !r.NeedsAttention {
 		t.Fatalf("partial failure hidden: %+v %v", r, e)
 	}
-	want := []string{"/buddy/travel/claim", "/buddy/travel/depart", "/tasks/done/claim", "/tasks/accept", "/makeup-cards/use", "/redeem", "/lottery/draw", "/buddy/open"}
+	want := []string{"/buddy/travel/claim", "/tasks/done/claim", "/tasks/accept", "/makeup-cards/use", "/redeem", "/lottery/draw", "/buddy/open", "/buddy/travel/depart"}
 	if !reflect.DeepEqual(writes, want) {
 		t.Fatalf("writes=%v", writes)
 	}

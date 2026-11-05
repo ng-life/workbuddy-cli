@@ -1,5 +1,6 @@
 Protocol and credential helper adapted from https://github.com/88lin/workbuddy-auto-signin
-Reference commit: d6bfeae254a2ba6c93b2211d58b814178c7fd48a
+Credential helper reference commit: d6bfeae254a2ba6c93b2211d58b814178c7fd48a
+WorkBuddy protocol reference commit: da2bc7f395d6a6d10334a7735f2f37d35766e003
 
 MIT License
 

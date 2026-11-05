@@ -96,6 +96,11 @@ func (c *Client) call(ctx context.Context, method, path string, payload any) (an
 	if dec.Decode(&extra) != io.EOF {
 		return nil, &APIError{Status: resp.StatusCode, Kind: "API 响应包含多余内容"}
 	}
+	// This endpoint-specific 403 is a normal unmet business condition, not an
+	// authentication failure. Do not relax handling for other paths or messages.
+	if resp.StatusCode == 403 && path == growthBase+"/buddy/travel/depart" && strings.EqualFold(strings.TrimSpace(text(Dig(value, "msg"))), "no active buddy") {
+		return map[string]any{"skipped": true, "reason": "尚未领养 Buddy"}, nil
+	}
 	if resp.StatusCode == 403 && path == growthBase+"/redeem" && strings.Contains(text(Dig(value, "msg")), "天数不足") {
 		return map[string]any{"skipped": true, "reason": "连登档位未解锁"}, nil
 	}

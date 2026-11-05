@@ -63,9 +63,14 @@ func (c *Client) Growth(ctx context.Context) (Result, error) {
 		}
 		return request("POST", path, payload)
 	}
+	// Opening a Buddy replaces the travel record. Only a confirmed idle state
+	// (including a successfully claimed arrival) permits opening or departing.
+	state := ""
+	dailyLimit := false
 	travel, e := request("GET", "/buddy/travel/status", nil)
 	if e == nil {
-		state := text(Dig(travel, "state"))
+		state = text(Dig(travel, "state"))
+		dailyLimit = Dig(travel, "daily_limit_reached") == true
 		if state == "arrived" {
 			id := Dig(travel, "record_id")
 			if id == nil {
@@ -79,16 +84,8 @@ func (c *Client) Growth(ctx context.Context) (Result, error) {
 				}
 			}
 		}
-		if state == "idle" && Dig(travel, "daily_limit_reached") != true {
-			cfg, err := request("GET", "/buddy/travel/config", nil)
-			if err == nil {
-				locations := list(Dig(cfg, "locations"))
-				if len(locations) > 0 && Dig(locations[0], "id") != nil {
-					_, _ = write("/buddy/travel/depart", map[string]any{"location_id": Dig(locations[0], "id")}, false)
-				}
-			}
-		}
 	}
+
 	tasks, e := request("GET", "/tasks", nil)
 	if e == nil {
 		pending := []string{}
@@ -155,17 +152,31 @@ func (c *Client) Growth(ctx context.Context) (Result, error) {
 	if e == nil && number(Dig(chances, "balance")) > 0 {
 		_, _ = write("/lottery/draw", map[string]any{}, true)
 	}
-	quota, e := request("GET", "/buddy/quota", nil)
-	if e == nil {
-		affordable := number(Dig(quota, "affordable"))
-		limit := number(Dig(quota, "max_open_count"))
-		if limit == 0 {
-			limit = 1
-		}
-		if affordable > 0 {
-			_, _ = write("/buddy/open", map[string]any{"count": min(affordable, limit)}, true)
+	if state == "idle" && !stopped {
+		quota, err := request("GET", "/buddy/quota", nil)
+		if err == nil {
+			affordable := number(Dig(quota, "affordable"))
+			limit := number(Dig(quota, "max_open_count"))
+			if limit == 0 {
+				limit = 1
+			}
+			if affordable > 0 {
+				_, _ = write("/buddy/open", map[string]any{"count": min(affordable, limit)}, true)
+			}
 		}
 	}
+	// Depart last so opening cannot erase a trip just started in this round.
+	// A daily travel limit still allows opening an idle Buddy.
+	if state == "idle" && !dailyLimit && !stopped {
+		cfg, err := request("GET", "/buddy/travel/config", nil)
+		if err == nil {
+			locations := list(Dig(cfg, "locations"))
+			if len(locations) > 0 && Dig(locations[0], "id") != nil {
+				_, _ = write("/buddy/travel/depart", map[string]any{"location_id": Dig(locations[0], "id")}, false)
+			}
+		}
+	}
+
 	if r.NeedsAttention {
 		return r, errors.New("成长中心存在失败步骤，请查看 steps；已完成的操作不会回滚")
 	}
